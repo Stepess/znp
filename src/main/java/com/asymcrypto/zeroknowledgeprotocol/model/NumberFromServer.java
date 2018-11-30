@@ -8,14 +8,13 @@ import java.math.BigInteger;
 
 @Data
 @Getter
-@NoArgsConstructor
 @AllArgsConstructor
-public class ServerKey {
+public class NumberFromServer {
     private String modulus;
 
     @Override
     public String toString() {
-        return "ServerKey{" +
+        return "NumberFromServer{" +
                 "modulus=" + modulus +
                 '}';
     }
