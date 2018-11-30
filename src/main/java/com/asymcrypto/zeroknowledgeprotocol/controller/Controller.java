@@ -38,18 +38,19 @@ public class Controller {
         MultiValueMap<String, ResponseCookie> cookies = response.cookies();
         if (cookies.containsKey("JSESSIONID")) {
             ResponseCookie cookie = cookies.getFirst("JSESSIONID");
-//            System.out.println(cookie);
-//            System.out.println(cookie.getDomain());
-//            System.out.println(cookie.getPath());
-//            System.out.println(cookie.getName());
-//            System.out.println(cookie.getValue());
             this.webClient = WebClient.builder()
                     .baseUrl("http://asymcryptwebservice.appspot.com/znp")
                     .defaultHeader(HttpHeaders.USER_AGENT, "Spring 5 WebClient")
                     .defaultCookie(cookie.getName(), cookie.getValue())
                     .build();
         }
-        return response.bodyToMono(Modulus.class);
+        String ress = serverKey.flatMap(res -> res.bodyToMono(String.class)).block();
+        System.out.println(ress);
+        int index = ress.lastIndexOf(':');
+        System.out.println(ress.substring(index+2, ress.length()-2));
+        Mono<Modulus> modulusMono = response.bodyToMono(Modulus.class);
+        //znpService.setServerKey(modulusMono.block().getModulus());
+        return modulusMono;
 
         //.bodyToMono(Modulus.class);
 //        znpService.setServerKey(serverKey.block().getModulus());
