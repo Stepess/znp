@@ -1,15 +1,20 @@
 package com.asymcrypto.zeroknowledgeprotocol.controller;
 
 import com.asymcrypto.zeroknowledgeprotocol.model.Modulus;
+import com.asymcrypto.zeroknowledgeprotocol.model.NumUtil;
 import com.asymcrypto.zeroknowledgeprotocol.model.Root;
 import com.asymcrypto.zeroknowledgeprotocol.model.ZNPService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
+import org.springframework.ui.Model;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.servlet.ModelAndView;
 import reactor.core.publisher.Mono;
+
+import java.math.BigInteger;
 
 @RestController("/")
 public class Controller {
@@ -23,6 +28,7 @@ public class Controller {
                 .baseUrl("http://asymcryptwebservice.appspot.com/znp")
                 .defaultHeader(HttpHeaders.USER_AGENT, "Spring 5 WebClient")
                 .build();
+
     }
 
 
@@ -44,13 +50,16 @@ public class Controller {
                     .defaultCookie(cookie.getName(), cookie.getValue())
                     .build();
         }
-        String ress = serverKey.flatMap(res -> res.bodyToMono(String.class)).block();
-        System.out.println(ress);
-        int index = ress.lastIndexOf(':');
-        System.out.println(ress.substring(index+2, ress.length()-2));
-        Mono<Modulus> modulusMono = response.bodyToMono(Modulus.class);
+
+        Mono<Modulus> mod = webClient.get()
+                .uri("/serverKey")
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .bodyToMono(Modulus.class);
+        znpService.setServerKey(mod.block().getModulus());
+
         //znpService.setServerKey(modulusMono.block().getModulus());
-        return modulusMono;
+        return response.bodyToMono(Modulus.class);
 
         //.bodyToMono(Modulus.class);
 //        znpService.setServerKey(serverKey.block().getModulus());
@@ -60,7 +69,7 @@ public class Controller {
     @RequestMapping(value = "/root/{y}", method = RequestMethod.GET)
     public Mono<Root> getRoot(@PathVariable String y) {
     //public void getRoot(@PathVariable String y) {
-        System.out.println(y);
+
 
         Mono<ClientResponse> root = webClient.get()
                 .uri("/challenge?y={y}", y)
@@ -77,8 +86,11 @@ public class Controller {
 
         ClientResponse clientResponse = root.block();
 
+
        String ress = root.flatMap(res -> res.bodyToMono(String.class)).block();
         System.out.println(ress);
+        int index = ress.lastIndexOf(':');
+        System.out.println("root " +  ress.substring(index+2, ress.length()-2));
       /* ClientResponse response = root.block();
 
        // System.out.println(response);
@@ -94,6 +106,58 @@ public class Controller {
 
         return clientResponse.bodyToMono(Root.class);
 
+    }
+
+    @RequestMapping("/challenge")
+    public String challenge(Model model) {
+        int counter = 0;
+        BigInteger modulus = znpService.getServerKey();
+        BigInteger answer = BigInteger.ZERO;
+        BigInteger shot;
+
+        do {
+
+            counter++;
+
+                //shot= NumUtil.generateRandomBigInteger(modulus);
+                shot= NumUtil.generateRandomBigInteger(modulus);
+                final BigInteger two = BigInteger.valueOf(2);
+                BigInteger y = shot.modPow(two, modulus);
+                //System.out.println(y.toString(16));
+                Mono<Root> root = webClient.get()
+                        .uri("/challenge?y={y}", y.toString(16))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .retrieve()
+                        .bodyToMono(Root.class);
+                answer = new BigInteger(root.block().getRoot(), 16);
+
+
+
+            System.out.println("shot = " + shot.toString(16));
+            System.out.println("answer = " + answer.toString(16));
+
+
+        } while (answer.equals(shot) || answer.equals(shot.subtract(modulus)));
+
+        BigInteger p = shot.add(answer).gcd(modulus);
+        BigInteger q = modulus.divide(p);
+
+        System.out.println("attempts: " + counter);
+        System.out.println("modulus = " + modulus.toString(16));
+        System.out.println("p = " + p.toString(16));
+        System.out.println("q = " + q.toString(16));
+        System.out.println("p*q = " + p.multiply(q).toString(16));
+
+//        ModelAndView modelAndView = new ModelAndView("index");
+//        modelAndView.addObject("counter", counter);
+//        modelAndView.addObject("p", p);
+//        modelAndView.addObject("q", q);
+//        return modelAndView;
+
+
+        return "counter = " + counter + '\n'
+                + "p = " + p.toString(16) + '\n'
+                + "q = " + q.toString(16);
     }
 
 
