@@ -6,14 +6,8 @@ import lombok.*;
 
 @Data
 @Getter
-@AllArgsConstructor
+@ToString
+@NoArgsConstructor
 public class Modulus {
     private String modulus;
-
-    @Override
-    public String toString() {
-        return "Modulus{" +
-                "modulus=" + modulus +
-                '}';
-    }
 }

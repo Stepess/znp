@@ -1,14 +1,11 @@
 package com.asymcrypto.zeroknowledgeprotocol.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
 @Data
 @Getter
 @ToString
-@AllArgsConstructor
+@NoArgsConstructor
 public class Root {
     private String root;
 }
